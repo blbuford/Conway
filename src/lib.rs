@@ -1,91 +1,118 @@
 use std::slice::Iter;
 
+const ALIVE: u8 = 0x80;
+const ALIVE_LAST_TICK: u8 = 0x40;
+
 #[derive(Debug, Clone)]
 pub struct Game {
-	universe: Vec<Vec<usize>>,
-	last_universe: Vec<Vec<usize>>
+	universe: Vec<Vec<u8>>,
+	height: usize,
+	width: usize,
+	population: usize,
+	generation: usize
 }
 
 impl Game {
 	pub fn new(width: usize, height: usize) -> Game {
 		let uni = vec![vec![0; width]; height];
-		let last_uni = uni.clone();
-		Game { universe: uni, last_universe: last_uni }
+		Game { universe: uni, height: height, width: width, population: 0, generation: 0 }
 	}
 
 	pub fn set_alive(&mut self, x: usize, y: usize) {
-		self.universe[y][x] = 1;
+		if (self.universe[y][x] & ALIVE) == 0 {
+			self.universe[y][x] = ALIVE;
+			self.population = self.population + 1;
+		}
 	}
 
 	pub fn set_dead(&mut self, x: usize, y: usize) {
-		self.universe[y][x] = 0;
+		if (self.universe[y][x] & ALIVE) > 0 {
+			self.universe[y][x] = self.universe[y][x] >> 1;
+			self.population = self.population - 1;
+		}
 	}
 
-	pub fn value(&self, x: usize, y: usize) -> usize {
+	pub fn value(&self, x: usize, y: usize) -> u8 {
 		self.universe[y][x]
 	}
 
-	pub fn alive_pairs(&self) -> Vec<(usize, usize)> {
-		let mut alive = Vec::new();
-		for (y, row) in self.universe.iter().enumerate() {
-            for (x, col) in row.iter().enumerate() {
-                if *col == 1 {
-                    alive.push((y,x));
-                }
-            }
-        }
-        alive
+	pub fn iter(&self) -> Iter<Vec<u8>> {
+		self.universe.iter()
+	}
+
+	pub fn population(&self) -> usize {
+		self.population
+	}
+
+	pub fn generation(&self) -> usize {
+		self.generation
 	}
 
 	pub fn tick(&mut self) {
-	    self.last_universe = self.universe.clone();
-	    for (i, row) in self.last_universe.iter().enumerate() {
+		let mut changes: Vec<(usize, usize, u8)> = Vec::new();
+		for row in self.universe.iter_mut() {
+	        for item in row.iter_mut() {
+	        	*item = *item >> 1;
+	        }
+	    }
+
+	    for (i, row) in self.universe.iter().enumerate() {
 	        for (j, col) in row.iter().enumerate() {
+	        	
 	            let neighbors = self.alive_neighbors(i, j);
-	            if *col == 1 {
-	                if neighbors < 2 || neighbors > 3{
-	                    self.universe[i][j] = 0;
+	            if (*col & ALIVE_LAST_TICK) > 0 {
+	                if neighbors >= 2 && neighbors <= 3{
+	                    changes.push((i, j, ALIVE | *col));
 	                } 
 	            } else {
 	                if neighbors == 3 {
-	                    self.universe[i][j] = 1;
+	                    changes.push((i, j, ALIVE | *col));
 	                }
 	            }
 	        }
 	    }
+
+	    for (i, j, value) in changes {
+	    	self.universe[i][j] = value;
+	    	if (self.universe[i][j] & ALIVE) > 0 { 
+	    		self.population = self.population + 1;
+	    	} else {
+	    		self.population = self.population - 1;
+	    	}
+	    }
 	}
 
 	fn alive_neighbors(&self, i: usize, j: usize) -> usize {
-	    let x = self.last_universe[0].len();
-	    let y = self.last_universe.len();
+	    let x = self.width;
+	    let y = self.height;
 	    let mut cnt = 0;
 	    //top left
-	    if i > 0 && j > 0 && self.last_universe[i-1][j-1] == 1 {
+	    if i > 0 && j > 0 && (self.universe[i-1][j-1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    } 
-	    if i > 0 && self.last_universe[i-1][j] == 1 {
+	    if i > 0 && (self.universe[i-1][j] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
-	    if i > 0 && j < x -1 && self.last_universe[i-1][j+1] == 1 {
+	    if i > 0 && j < x -1 && (self.universe[i-1][j+1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
 
 	    //bottom left
-	    if i < y - 1 && j > 0 && self.last_universe[i+1][j-1] == 1 {
+	    if i < y - 1 && j > 0 && (self.universe[i+1][j-1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    } 
-	    if i < y - 1 && self.last_universe[i+1][j] == 1 {
+	    if i < y - 1 && (self.universe[i+1][j] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
-	    if i < y - 1 && j < x -1 && self.last_universe[i+1][j+1] == 1 {
+	    if i < y - 1 && j < x -1 && (self.universe[i+1][j+1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
 
 	    //mid left
-	    if j > 0 && self.last_universe[i][j-1] == 1 {
+	    if j > 0 && (self.universe[i][j-1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
-	    if j < x - 1 && self.last_universe[i][j+1] == 1 {
+	    if j < x - 1 && (self.universe[i][j+1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
 	    }
 	    cnt
