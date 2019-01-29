@@ -32,9 +32,9 @@ fn main() {
         (SCREEN_WIDTH / PIXEL_SIZE) as usize, 
         (SCREEN_HEIGHT / PIXEL_SIZE) as usize);
 
-    let mut pat = read_ascii(File::open("patterns/b.txt").unwrap()).unwrap();
-    pat = center_pattern(pat, (SCREEN_WIDTH / PIXEL_SIZE) as usize, (SCREEN_HEIGHT / PIXEL_SIZE) as usize);
-    for (x, y) in pat {
+    let mut pattern = read_ascii(File::open("patterns/b.txt").unwrap()).unwrap();
+    pattern = center_pattern(pattern, (SCREEN_WIDTH / PIXEL_SIZE) as usize, (SCREEN_HEIGHT / PIXEL_SIZE) as usize);
+    for (x, y) in pattern {
         game.set_alive(x,y);
     }
     
@@ -72,18 +72,17 @@ fn main() {
 
 fn read_ascii<R: Read>(io: R) -> Result<Vec<(usize, usize)>, Error> {
     let br = BufReader::new(io);
-    let mut v = vec![];
+    let mut coords = vec![];
     for (y, line) in br.lines().enumerate() {
-        let l = line?;
-        let l = String::from(l.trim());
-        for (x, char) in l.chars().enumerate() {
-            println!("{}", char);
+        let line = line?;
+        let line = line.trim();
+        for (x, char) in line.chars().enumerate() {
             if char == 'O' {
-                v.push((x,y));
+                coords.push((x,y));
             }
         }
     }
-    Ok(v)
+    Ok(coords)
 }
 
 fn center_pattern( pat: Vec<(usize, usize)>, width:usize, height:usize ) -> Vec<(usize, usize)> {
