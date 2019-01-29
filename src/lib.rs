@@ -25,11 +25,13 @@ impl Game {
 		}
 	}
 
-	pub fn set_dead(&mut self, x: usize, y: usize) {
-		if (self.universe[y][x] & ALIVE) > 0 {
-			self.universe[y][x] = self.universe[y][x] >> 1;
-			self.population = self.population - 1;
-		}
+	pub fn is_alive(&self, x: usize, y: usize ) -> bool {
+		(self.universe[y][x] & ALIVE) > 0
+	}
+
+	pub fn dimensions(&self) -> (usize, usize) {
+
+		(self.width, self.height)
 	}
 
 	pub fn value(&self, x: usize, y: usize) -> u8 {
@@ -49,13 +51,17 @@ impl Game {
 	}
 
 	pub fn tick(&mut self) {
+		self.generation = self.generation + 1;
 		let mut changes: Vec<(usize, usize, u8)> = Vec::new();
+
+		// Shift last generation to the next bit down
 		for row in self.universe.iter_mut() {
 	        for item in row.iter_mut() {
 	        	*item = *item >> 1;
 	        }
 	    }
 
+	    // Calculate the rules that need to be applied from last generation
 	    for (i, row) in self.universe.iter().enumerate() {
 	        for (j, col) in row.iter().enumerate() {
 	        	
@@ -63,22 +69,22 @@ impl Game {
 	            if (*col & ALIVE_LAST_TICK) > 0 {
 	                if neighbors >= 2 && neighbors <= 3{
 	                    changes.push((i, j, ALIVE | *col));
-	                } 
+	                } else {
+	                	self.population = self.population - 1;
+	                }
 	            } else {
 	                if neighbors == 3 {
 	                    changes.push((i, j, ALIVE | *col));
-	                }
+	                    self.population = self.population + 1;
+	                } 
 	            }
 	        }
 	    }
 
+	    // Apply the changes to update this generation
 	    for (i, j, value) in changes {
 	    	self.universe[i][j] = value;
-	    	if (self.universe[i][j] & ALIVE) > 0 { 
-	    		self.population = self.population + 1;
-	    	} else {
-	    		self.population = self.population - 1;
-	    	}
+
 	    }
 	}
 
@@ -86,6 +92,7 @@ impl Game {
 	    let x = self.width;
 	    let y = self.height;
 	    let mut cnt = 0;
+
 	    //top left
 	    if i > 0 && j > 0 && (self.universe[i-1][j-1] & ALIVE_LAST_TICK) > 0 {
 	        cnt += 1;
@@ -119,17 +126,3 @@ impl Game {
 	}
 
 }
-
-// pub struct GameIter<'a> {
-// 	inner: Iter<Vec<usize>>
-// }
-
-// impl<'a> Iterator for GameIter<'a> {
-// 	type Item = &'a Vec<usize>;
-
-// 	fn next(&mut self) -> Option<Vec<usize>> {
-// 		self.inner.next()
-// 	}
-
-// }
-

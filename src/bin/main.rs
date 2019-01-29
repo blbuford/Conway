@@ -1,20 +1,20 @@
 extern crate piston_window;
-extern crate find_folder;
-extern crate fps_counter;
 extern crate conway;
 
 use piston_window::*;
-use piston_window::rectangle::square;
+use piston_window::rectangle::{square, Border};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Error, ErrorKind, Read};
+use std::io::{BufRead, BufReader, Error, Read};
 
 fn main() {
+    // Sizes
     const PIXEL_SIZE: f64 = 10.0;
     const SCREEN_WIDTH: f64 = 1200.0;
     const SCREEN_HEIGHT: f64 = 800.0;
 
     // Colors
     let color_alive: [f32; 4] = color::hex("58CCED");
+    let color_alive_border = Border{color: color::hex("0d5d74"), radius: 1.0};
     let color_dead: [f32; 4] = color::hex("000000");
 
     let mut window: PistonWindow = WindowSettings::new(
@@ -26,62 +26,48 @@ fn main() {
         .build()
         .unwrap();
 
-    // let assets = find_folder::Search::ParentsThenKids(3, 3)
-    //     .for_folder("assets").unwrap();
-    // println!("{:?}", assets);
-    // let ref font = assets.join("FiraSans-Regular.ttf");
-    // let factory = window.factory.clone();
-    // let mut glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
+    
 
-    let mut cw = conway::Game::new(
+    let mut game = conway::Game::new(
         (SCREEN_WIDTH / PIXEL_SIZE) as usize, 
         (SCREEN_HEIGHT / PIXEL_SIZE) as usize);
 
     let mut pat = read_ascii(File::open("patterns/b.txt").unwrap()).unwrap();
     pat = center_pattern(pat, (SCREEN_WIDTH / PIXEL_SIZE) as usize, (SCREEN_HEIGHT / PIXEL_SIZE) as usize);
     for (x, y) in pat {
-        cw.set_alive(x,y);
+        game.set_alive(x,y);
     }
     
     window.set_lazy(true);
-    let mut fps = fps_counter::FPSCounter::new();
     let mut settings = EventSettings::new();
-    settings.max_fps = 1;
+    settings.max_fps = 10;
     let mut events = Events::new(settings);
 
     while let Some(e) = events.next(&mut window) {
 
         window.draw_2d(&e, |c, g| {
-                clear(color_dead, g);
                 
-                let alive = cw.iter();
-                for (y, row) in alive.enumerate() {
-                    for (x, item) in row.iter().enumerate() {
-                        if (*item & 0x80) > 0 {
-                            let rectangle = Rectangle::new(color_alive);
+                clear(color_dead, g);
+
+                let (dimx, dimy) = game.dimensions();
+                for x in 0..dimx {
+                    for y in 0..dimy {
+                        if game.is_alive(x, y) {
+                            let rectangle = Rectangle::new(color_alive).border(color_alive_border);
                                 
-                            let dims = square(x as f64 * PIXEL_SIZE, y as f64 * PIXEL_SIZE, PIXEL_SIZE);
+                            let dims = square(
+                                            (x as f64) * PIXEL_SIZE, 
+                                            (y as f64) * PIXEL_SIZE,
+                                            PIXEL_SIZE);
                             rectangle.draw(dims, &c.draw_state, c.transform, g);
                         }
                     }
                 }
-                cw.tick();
-                dbg!(cw.population());
-                println!("FPS: {:?}", fps.tick());
+
+                game.tick();
             });
 
     }
-}
-
-fn read<R: Read>(io: R) -> Result<Vec<(usize, usize)>, Error> {
-    let br = BufReader::new(io);
-    let mut v = vec![];
-    for line in br.lines() {
-        let l = line?;
-        let pieces: Vec<&str> = l.trim().split(",").collect();
-        v.push((pieces[0].parse().unwrap(), pieces[1].parse().unwrap()));
-    }
-    Ok(v)
 }
 
 fn read_ascii<R: Read>(io: R) -> Result<Vec<(usize, usize)>, Error> {
