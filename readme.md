@@ -1,12 +1,14 @@
 ## Conway's Game of Life
 
-Its a cut and dry implementation of Conway's Game of Life written in Rust. It will read ASCII patterns in, center them on the screen, and apply the Game of Life rules to them.
+It's a cut and dry implementation of Conway's Game of Life written in Rust. It will read ASCII patterns in, center them on the screen, and apply the Game of Life rules to them.
 
 ## Getting Started
 
-Clone the repo.
+Clone the repo and run it!
 
 ```
+git clone https://github.com/blbuford/Conway
+cd conway
 cargo run
 ```
 
